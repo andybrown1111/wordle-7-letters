@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7-Letter Wordle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #121213;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        header {
+            border-bottom: 1px solid #3a3a3c;
+            width: 100%;
+            max-width: 500px;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 0.2rem;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .tile {
+            width: 62px;
+            height: 62px;
+            border: 2px solid #3a3a3c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #ffffff;
+            background-color: #121213;
+            transition: all 0.2s ease;
+        }
+
+        .tile.filled {
+            border-color: #565758;
+            animation: pop 0.1s ease;
+        }
+
+        .tile.correct {
+            background-color: #538d4e;
+            border-color: #538d4e;
+            animation: flip 0.5s ease;
+        }
+
+        .tile.present {
+            background-color: #b59f3b;
+            border-color: #b59f3b;
+            animation: flip 0.5s ease;
+        }
+
+        .tile.absent {
+            background-color: #3a3a3c;
+            border-color: #3a3a3c;
+            animation: flip 0.5s ease;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes flip {
+            0% { transform: rotateX(0); }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .row.shake {
+            animation: shake 0.5s ease;
+        }
+
+        .keyboard {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 8px;
+        }
+
+        .keyboard-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .key {
+            background-color: #818384;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 0;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            flex: 1;
+            min-width: 0;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.1s ease;
+        }
+
+        .key:hover {
+            opacity: 0.8;
+        }
+
+        .key.wide {
+            flex: 1.5;
+        }
+
+        .key.correct {
+            background-color: #538d4e;
+        }
+
+        .key.present {
+            background-color: #b59f3b;
+        }
+
+        .key.absent {
+            background-color: #3a3a3c;
+        }
+
+        .message {
+            position: fixed;
+            top: 80px;
+            background-color: #ffffff;
+            color: #121213;
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stats {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #121213;
+            border: 1px solid #3a3a3c;
+            border-radius: 8px;
+            padding: 30px;
+            min-width: 300px;
+            display: none;
+            z-index: 2000;
+        }
+
+        .stats.show {
+            display: block;
+        }
+
+        .stats h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .stats p {
+            text-align: center;
+            font-size: 18px;
+            margin: 10px 0;
+        }
+
+        .stats .word {
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #538d4e;
+        }
+
+        .stats button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            background-color: #538d4e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .stats button:hover {
+            opacity: 0.9;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1999;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>WORDLE 7</h1>
+    </header>
+
+    <div class="game-container">
+        <div class="board" id="board"></div>
+
+        <div class="keyboard" id="keyboard">
+            <div class="keyboard-row">
+                <button class="key" data-key="Q">Q</button>
+                <button class="key" data-key="W">W</button>
+                <button class="key" data-key="E">E</button>
+                <button class="key" data-key="R">R</button>
+                <button class="key" data-key="T">T</button>
+                <button class="key" data-key="Y">Y</button>
+                <button class="key" data-key="U">U</button>
+                <button class="key" data-key="I">I</button>
+                <button class="key" data-key="O">O</button>
+                <button class="key" data-key="P">P</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key" data-key="A">A</button>
+                <button class="key" data-key="S">S</button>
+                <button class="key" data-key="D">D</button>
+                <button class="key" data-key="F">F</button>
+                <button class="key" data-key="G">G</button>
+                <button class="key" data-key="H">H</button>
+                <button class="key" data-key="J">J</button>
+                <button class="key" data-key="K">K</button>
+                <button class="key" data-key="L">L</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="key wide" data-key="Enter">Enter</button>
+                <button class="key" data-key="Z">Z</button>
+                <button class="key" data-key="X">X</button>
+                <button class="key" data-key="C">C</button>
+                <button class="key" data-key="V">V</button>
+                <button class="key" data-key="B">B</button>
+                <button class="key" data-key="N">N</button>
+                <button class="key" data-key="M">M</button>
+                <button class="key wide" data-key="Backspace">⌫</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="message" id="message"></div>
+    <div class="overlay" id="overlay"></div>
+    <div class="stats" id="stats">
+        <h2 id="stats-title">Game Over</h2>
+        <p id="stats-message"></p>
+        <p class="word" id="stats-word"></p>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+
+    <script>
+        // Comprehensive list of common 7-letter words from powerlanguage word-lists
+        const WORD_LIST = [
+            "ABANDON", "ABILITY", "ABOLISH", "ABDOMEN", "ABRAHAM", "ABYSSAL", "ACADEMY", "ACCOUNT", "ACHIEVE", "ACIDITY", "ACQUIRE", "ACROBAT", "ACRONYM", "ACRYLIC", "ACTRESS", "ADAPTOR", "ADDRESS", "ADJOURN", "ADMIRAL", "ADVANCE", "ADVISOR", "AERATOR", "AEROSOL", "AFFABLE", "AFFLICT", "AFFRONT", "AFRICAN", "AGAINST", "AGELESS", "AGENDUM", "AGILITY", "AGONIZE", "AILMENT", "AIRDROP", "AIRFARE", "AIRFLOW", "AIRFOIL", "AIRHEAD", "AIRLIFT", "AIRLINE", "AIRMAIL", "AIRPLAY", "AIRPORT", "AIRSHIP", "AIRSHOW", "AIRSICK", "AIRTIME", "AIRWAVE", "ALAMODE", "ALCHEMY", "ALCOHOL", "ALFALFA", "ALGEBRA", "ALFREDO", "ALIMONY", "ALKALIC", "ALLERGY", "ALMANAC", "ALREADY", "ALRIGHT", "ALUMNUS", "ALVEOLI", "AMADEUS", "AMATEUR", "AMAZING", "AMBIENT", "AMBLING", "AMENITY", "AMERICA", "AMIABLE", "AMMONIA", "AMNESIA", "AMNESTY", "AMPLIFY", "ANAGRAM", "ANALOGY", "ANALYST", "ANALYZE", "ANARCHY", "ANATOMY", "ANCHOVY", "ANCIENT", "ANDROID", "ANEMONE", "ANGELIC", "ANGRIER", "ANGRILY", "ANGUISH", "ANGULAR", "ANIMALS", "ANIMATE", "ANNUITY", "ANSWERS", "ANTACID", "ANTENNA", "ANTHILL", "ANTHRAX", "ANTIFOG", "ANTIQUE", "ANTONYM", "ANYBODY", "ANYMORE", "ANYTIME", "ANXIETY", "ANXIOUS", "APOLOGY", "APOSTLE", "APPEASE", "APPLAUD", "APPOINT", "APPROVE", "APRICOT", "AQUATIC", "AQUIFER", "ARCHERY", "ARCHIVE", "ARCHWAY", "ARDUOUS", "ARMBAND", "AROUSAL", "ARRAIGN", "ARRANGE", "ARRIVAL", "ARTISTS", "ARTWORK", "ASCETIC", "ASHTRAY", "ASPHALT", "ASPIRIN", "ASSAULT", "ASTRIDE", "ATHEIST", "ATHLETE", "ATTEMPT", "ATTRACT", "AUCTION", "AUDIBLE", "AUGMENT", "AUSTRIA", "AUTOPSY", "AVERAGE", "AVIATOR", "AVOCADO", "AWAKING", "AWESOME", "AWKWARD", "BABYSIT", "BACKLIT", "BACKLOG", "BACKRUB", "BADLAND", "BAGGAGE", "BAILOUT", "BALANCE", "BALLBOY", "BALLOON", "BALONEY", "BANANAS", "BANDAGE", "BANDAID", "BANGKOK", "BARGAIN", "BASHFUL", "BASTARD", "BATTERY", "BEATLES", "BEDROOM", "BEEHIVE", "BELIEVE", "BENEATH", "BENEFIT", "BERRIES", "BETWEEN", "BICYCLE", "BIFOCAL", "BILLION", "BIPOLAR", "BISCUIT", "BLOCKER", "BLOSSOM", "BLOWOUT", "BLUEJAY", "BLUERAY", "BOYCOTT", "BRAVERY", "BREAKER", "BREWERY", "BRITISH", "BROWNIE", "BROWSER", "BUFFALO", "BUILDER", "BULLDOG", "BURGERS", "BURNOUT", "BURRITO", "CABINET", "CALCIUM", "CAMELOT", "CAMPAIN", "CAPITAL", "CAPITOL", "CAPTAIN", "CAPTION", "CAPTURE", "CARAVAN", "CARBARN", "CARDOOR", "CAREERS", "CAREFUL", "CARIBOU", "CARKEYS", "CARRIER", "CARTOON", "CASCADE", "CASSIDY", "CATFISH", "CAUTION", "CENTRAL", "CENTURY", "CERTAIN", "CHALICE", "CHAMBER", "CHANGES", "CHANNEL", "CHAPTER", "CHARGER", "CHARITY", "CHARLIE", "CHEAPER", "CHEATER", "CHECKER", "CHECKUP", "CHEDDAR", "CHEERIO", "CHEETAH", "CHERISH", "CHICKEN", "CHIMNEY", "CHIPPER", "CHOICES", "CHOOSEY", "CHOPPER", "CHORALE", "CHOWDER", "CIRCUIT", "CLASSES", "CLASSIC", "CLEANER", "CLINTON", "CLOSELY", "CLOTHES", "COCKPIT", "COCONUT", "COLDEST", "COLLAGE", "COLLECT", "COLLEGE", "COLONEL", "COMBINE", "COMBUST", "COMEDIC", "COMFORT", "COMICAL", "COMMAND", "COMMEND", "COMMENT", "COMMODE", "COMMUNE", "COMMUTE", "COMPACT", "COMPANY", "COMPARE", "COMPASS", "COMPETE", "COMPILE", "COMPLEX", "COMPOSE", "COMPUTE", "COMRADE", "CONCAVE", "CONCEAL", "CONCEDE", "CONCEIT", "CONCENT", "CONCEPT", "CONCERN", "CONCERT", "CONCISE", "CONCORD", "CONDEMN", "CONDONE", "CONDUCT", "CONDUIT", "CONFESS", "CONFIDE", "CONFINE", "CONFIRM", "CONFORM", "CONFUSE", "CONGEAL", "CONICAL", "CONIFER", "CONJOIN", "CONJURE", "CONNECT", "CONQUER", "CONSOLE", "CONSORT", "CONSULT", "CONSUME", "CONTACT", "CONTAIN", "CONTEND", "CONTENT", "CONTEST", "CONTEXT", "CONTOUR", "CONTROL", "CONVENT", "CONVICT", "COOKIES", "CORRECT", "CORRUPT", "COSTUME", "COTTAGE", "COUNCIL", "COUNTER", "COUNTRY", "COUPLES", "COURAGE", "COWGIRL", "COWHIDE", "CRACKER", "CRAPPER", "CRAWLER", "CRAZILY", "CREATOR", "CREWCUT", "CRIMSON", "CRIPPLE", "CROUTON", "CRUCIFY", "CRUELTY", "CRUISER", "CRUNCHY", "CRUSADE", "CRYBABY", "CRYSTAL", "CUBICLE", "CUISINE", "CULPRIT", "CULTURE", "CULVERT", "CUMULUS", "CUPCAKE", "CUPLIKE", "CURATOR", "CURIOUS", "CURRENT", "CURSIVE", "CURTAIL", "CURTAIN", "CUSHION", "CUSTARD", "CUSTODY", "CUTBACK", "CUTICLE", "CUTLERY", "CUTLETS", "CYCLONE", "CYNICAL", "DAYCARE", "DAYTIME", "DECADES", "DECEIVE", "DECLARE", "DECIBEL", "DECIMAL", "DECLINE", "DECODER", "DECORUM", "DEFAULT", "DEFENCE", "DEFIANT", "DEFICIT", "DEFLATE", "DEFROST", "DEFUSER", "DEGRADE", "DEGREES", "DELIGHT", "DELIVER", "DELTOID", "DEMERIT", "DENMARK", "DENSITY", "DENTIST", "DENTURE", "DEPLETE", "DEPLORE", "DEPOSIT", "DEPRESS", "DEPRIVE", "DERVISH", "DESCENT", "DESERVE", "DESKTOP", "DESPAIR", "DESPITE", "DESSERT", "DESTAIN", "DESTINY", "DESTROY", "DETRACT", "DEVELOP", "DEVILRY", "DEVIOUS", "DEWDROP", "DIAMOND", "DIAPERS", "DICTION", "DIECAST", "DIGITAL", "DIGNITY", "DISABLE", "DISAVOW", "DISBAND", "DISCARD", "DISCERN", "DISCORD", "DISCUSS", "DISDAIN", "DISEASE", "DISEUSE", "DISGUST", "DISJOIN", "DISLIKE", "DISMAST", "DISMISS", "DISOBEY", "DISPART", "DISPLAY", "DISPORT", "DISPOSE", "DISPUTE", "DISRATE", "DISROBE", "DISRUPT", "DISSEAT", "DISTORT", "DISTURB", "DISSECT", "DISTANT", "DISTEND", "DISTICH", "DISTILL", "DIVERSE", "DIVIDED", "DIVORCE", "DOCTORS", "DOLLARS", "DOLPHIN", "DOORWAY", "DORMANT", "DRAUGHT", "DREAMER", "DRIVERS", "DRYNESS", "DURABLE", "DYNAMIC", "EARACHE", "EARLIER", "EARLOBE", "EASTERN", "ECLIPSE", "ECONOMY", "EDUCATE", "EGOTISM", "ELASTIC", "ELDERLY", "ELEGANT", "ELEMENT", "ELEVATE", "EMBASSY", "EMBRACE", "EMOTION", "EMPATHY", "EMPRESS", "ENCLOSE", "ENDLESS", "ENFORCE", "ENGLISH", "ENHANCE", "ENLIGHT", "ENVIOUS", "ETERNAL", "ETHICAL", "EQUINOX", "EQUATOR", "EVASIVE", "EXACTLY", "EXAMPLE", "EXCITED", "EXPENSE", "EXPERTS", "EXPLAIN", "EXPLODE", "EXPLORE", "EXPRESS", "EXTINCT", "EXTRACT", "EXTREME", "EYEBROW", "EYELASH", "FACEOFF", "FACTOID", "FACTORS", "FACULTY", "FAILURE", "FANCLUB", "FANTASY", "FARMBOY", "FARMERS", "FASHION", "FASTEST", "FATIGUE", "FEATURE", "FEDERAL", "FERMENT", "FERRIED", "FICTION", "FIFTEEN", "FIGHTER", "FINALLY", "FINANCE", "FIREDOG", "FIREFLY", "FIREMAN", "FITNESS", "FIXTURE", "FLOWERS", "FLULIKE", "FLUSHOT", "FOOLISH", "FOOTAGE", "FORBEAR", "FOREARM", "FOREIGN", "FOREVER", "FOREMAN", "FORFEIT", "FORGIVE", "FORMULA", "FORSAKE", "FORTUNE", "FORWARD", "FOXHOLE", "FRAGILE", "FRANTIC", "FREEZER", "FRECKLE", "FREEDOM", "FREEWAY", "FREIGHT", "FRESHLY", "FRIENDS", "FRISBEE", "FRITTER", "FUMBLED", "FURTHER", "GAMBLER", "GAMEBOY", "GARAGES", "GARBAGE", "GASHOSE", "GASTANK", "GATEWAY", "GENERAL", "GENESIS", "GENERIC", "GENETIC", "GETAWAY", "GIRAFFE", "GLIMPSE", "GLORIFY", "GLUCOSE", "GOODBYE", "GORILLA", "GOVERNS", "GRADUAL", "GRAMMAR", "GRANDMA", "GRANDPA", "GRANITE", "GRANOLA", "GRAPHIC", "GRAVITY", "GROCERY", "HABITAT", "HAIRCUT", "HALIBUT", "HAPPILY", "HARBOUR", "HARDING", "HARVEST", "HATCHET", "HATEFUL", "HEALTHY", "HEIGHTS", "HELPFUL", "HEROISM", "HERSELF", "HIGHEST", "HIGHWAY", "HIMSELF", "HISTORY", "HOLIDAY", "HOLLAND", "HOMEBOY", "HONESTY", "HOPEFUL", "HOTCAKE", "HOTDOGS", "HUSBAND", "HYDRANT", "ICEBERG", "ICELAND", "ICICLES", "IDEALLY", "IDOLIZE", "ILLICIT", "ILLNESS", "IMAGINE", "IMPOUND", "IMPRESS", "IMPROVE", "INBOARD", "INBOUND", "INCENSE", "INCISOR", "INCLINE", "INCLOSE", "INCLUDE", "INCOMES", "INCUBUS", "INDOORS", "INDULGE", "INFANCY", "INFERNO", "INFIDEL", "INFLAME", "INFLATE", "INFLICT", "INGRAIN", "INGROWN", "INHALER", "INHERIT", "INITIAL", "INKBLOT", "INKLING", "INKWELL", "INLAYER", "INQUIRE", "INQUIRY", "INSECTS", "INSIDER", "INSIGHT", "INSPECT", "INSPIRE", "INSTALL", "INSTANT", "INSTEAD", "INSTILL", "INSULAR", "INSURER", "INTENSE", "INTERIM", "INTERNS", "INTROIT", "INTRUDE", "INTRUST", "INTWINE", "INVADER", "INVOICE", "INVOLVE", "ISLAMIC", "ISLANDS", "ISOLATE", "ITEMIZE", "JAMAICA", "JANUARY", "JASMINE", "JEALOUS", "JEWELRY", "JOURNEY", "JUSTICE", "JUSTIFY", "KENNEDY", "KEYHOLE", "KEYNOTE", "KINGDOM", "KINSHIP", "KITCHEN", "KITTENS", "KNEECAP", "LANTERN", "LAUNDRY", "LAWSUIT", "LAWYERS", "LEADERS", "LEARNER", "LEATHER", "LENSCAP", "LESSONS", "LETTERS", "LIBERAL", "LIBERTY", "LIBRARY", "LICENSE", "LINCOLN", "LIPREAD", "LITERAL", "LIVABLE", "LOBSTER", "LOGICAL", "LOVABLE", "LOVEBUG", "LULLABY", "MACHINE", "MADISON", "MADNESS", "MAGICAL", "MAGNIFY", "MAILBAG", "MAILBOX", "MAILMAN", "MAJESTY", "MALARIA", "MALDIVE", "MANAGER", "MANDATE", "MANNERS", "MARKERS", "MARRIED", "MASSAGE", "MASSIVE", "MASTERY", "MEANDER", "MEASURE", "MEDICAL", "MEMBERS", "MENTHOL", "MERCURY", "MERMAID", "MESSAGE", "METHANE", "MICHAEL", "MIDTERM", "MIGRANT", "MIGRATE", "MILITIA", "MILLION", "MISDIAL", "MISFILE", "MISLEAD", "MISREAD", "MISSILE", "MISSION", "MISTAKE", "MIXTURE", "MOBSTER", "MODESTY", "MONARCH", "MONITOR", "MONOLOG", "MONSOON", "MONSTER", "MONTAGE", "MONTHLY", "MOOCHER", "MOONLIT", "MORALLY", "MORNING", "MORONIC", "MORTIFY", "MORTISE", "MUDFLAP", "MUDFLOW", "MUFFLER", "MUFFINS", "MUNDANE", "MUSICAL", "MUSTANG", "MUSTARD", "MYSTERY", "MYSTIFY", "NAMETAG", "NAPKINS", "NARCISM", "NATIONS", "NATIVES", "NATURAL", "NAUGHTY", "NEAREST", "NEBULAR", "NECKTIE", "NEEDLES", "NEGLECT", "NERVOUS", "NETWORK", "NEURONS", "NEUTRAL", "NEUTRON", "NEWBORN", "NEWSBOY", "NIAGERA", "NICKELS", "NIGHTLY", "NIRVANA", "NITRATE", "NOCTURN", "NOISILY", "NOMADIC", "NOMINAL", "NONSTOP", "NOSTRIL", "NOTABLE", "NOTABLY", "NOTHING", "NOVELTY", "NOXIOUS", "NUCLEAR", "NUCLEUS", "NUDNICK", "NULLIFY", "NUMBERS", "NUMERAL", "NUNLIKE", "NUNNERY", "NURSERY", "NURTURE", "NUTCASE", "OBESITY", "OBSERVE", "OBVIOUS", "OCTAGON", "OCTOPUS", "OCTOBER", "OFFENSE", "OPERATE", "OPINION", "ORGANIC", "OTTOMAN", "OUTBACK", "OUTCAST", "OUTCOME", "OUTDOOR", "OUTRAGE", "OUTSIDE", "OVERALL", "PACKAGE", "PAINFUL", "PAINTER", "PAJAMAS", "PANDORA", "PANTHER", "PARADOX", "PARENTS", "PARTIES", "PARTNER", "PASSION", "PATIENT", "PATRIOT", "PAYMENT", "PEANUTS", "PENALTY", "PENNIES", "PENSION", "PERCENT", "PERFECT", "PERFORM", "PERFUME", "PERSIST", "PHONICS", "PHRASES", "PHYSICS", "PICTURE", "PIGEARS", "PIGTAIL", "PILGRIM", "PINBALL", "PINTAIL", "PIONEER", "PLASTIC", "PLAYFUL", "PLUNDER", "POLITIC", "POLLUTE", "POPCORN", "POPTART", "POPULAR", "POSTAGE", "POSTBOX", "POSTMAN", "PRAISES", "PREBAKE", "PREBOIL", "PRECEDE", "PRECISE", "PREDICT", "PREEMPT", "PREFACE", "PREHEAT", "PRELOAD", "PRELUDE", "PREMADE", "PREMIER", "PREMISE", "PREMIUM", "PREPAID", "PREPARE", "PREPPIE", "PREQUEL", "PRESALE", "PRESENT", "PRESHOW", "PRESOAK", "PRESUME", "PRETEEN", "PRETEND", "PRETEST", "PRETZEL", "PREVAIL", "PREVENT", "PREVERB", "PREVIEW", "PREWASH", "PREWORN", "PREYING", "PRICIER", "PRICKLY", "PRIMAGE", "PRIMARY", "PRIMATE", "PRINTER", "PRIVACY", "PRIVATE", "PRIVIES", "PROBATE", "PROBLEM", "PROCEED", "PROCESS", "PROCTOR", "PROCURE", "PRODIGY", "PRODUCE", "PRODUCT", "PROFANE", "PROFESS", "PROFILE", "PROFUSE", "PROGENY", "PROGRAM", "PROJECT", "PROLATE", "PROLINE", "PROLONG", "PROMISE", "PROMOTE", "PRONATE", "PRONOUN", "PROPANE", "PROPHET", "PROPOSE", "PRORATE", "PROSODY", "PROSPER", "PROTECT", "PROTEIN", "PROTEST", "PROTONS", "PROUDLY", "PROVERB", "PROVIDE", "PROVOKE", "PROVOST", "PROWESS", "PROWLER", "PROXIES", "PRUDENT", "PUBERTY", "PUBLISH", "PUMPKIN", "PUPPIES", "PURPOSE", "PURSUIT", "PYRAMID", "QUALIFY", "QUALITY", "QUANTUM", "QUARREL", "QUARTER", "QUEENLY", "QUEERLY", "QUICKEN", "QUICKER", "QUICKLY", "QUIETER", "QUIETLY", "QUILTER", "QUININE", "QUINTET", "QUITTER", "RACCOON", "RACECAR", "RACEWAY", "RADIANT", "RADICAL", "RAGTIME", "RAGWEED", "RAILCAR", "RAINBOW", "RAMBLER", "RAMPANT", "RAMPART", "RANCHER", "RAISINS", "RANSACK", "RAPIDLY", "RAPPORT", "RAPTURE", "RATTLER", "RAVIOLI", "REACTOR", "REALITY", "REALIZE", "REBUILD", "RECEIPT", "RECEIVE", "RECHECK", "RECLAIM", "RECLINE", "RECOVER", "RECTIFY", "RECYCLE", "REDBULL", "REDCOAT", "REDHEAD", "REDLINE", "REDNECK", "REDNESS", "REDTAIL", "REDUCER", "REDWOOD", "REFEREE", "REFLECT", "REFOCUS", "REFRACT", "REFRAIN", "REFRESH", "REFUGEE", "REFUSAL", "REFUTAL", "REGATTA", "REGIMEN", "REGULAR", "REISSUE", "REJOICE", "RELATED", "RELAXER", "RELEARN", "RELEASE", "REMOUNT", "REPTILE", "RESCUED", "RESCUER", "RESERVE", "RESPECT", "RESPOND", "RESTATE", "RESTORE", "RETEACH", "RETRAIN", "REUNION", "REUNITE", "REVOLVE", "RIPCURL", "RIPTIDE", "RIVIERA", "ROSEBUD", "ROUTINE", "ROWBOAT", "RUGRATS", "SABBATH", "SANDMAN", "SARCASM", "SATISFY", "SCANDAL", "SCENERY", "SCHOLAR", "SEABASS", "SEABIRD", "SEAFOOD", "SEAFOWL", "SEAGULL", "SEALANT", "SEAPORT", "SEASICK", "SEASIDE", "SEASONS", "SEAWALL", "SEAWARD", "SEAWEED", "SECRECY", "SECTION", "SECULAR", "SECURED", "SERIOUS", "SELFISH", "SELLOUT", "SENSORS", "SERVANT", "SERVICE", "SETBACK", "SETTLER", "SEVENTY", "SEVERAL", "SHELTER", "SHERIFF", "SHERMAN", "SHIFTER", "SHIRLEY", "SHOOTER", "SHORTER", "SIDEARM", "SINCERE", "SITDOWN", "SIXTEEN", "SKIJUMP", "SKIMASK", "SKIPOLE", "SKYPARK", "SLAVERY", "SMARTER", "SMUGGLE", "SNOWMAN", "SNUGGLE", "SOCIETY", "SOLDIER", "SOMEDAY", "SPEAKER", "SPECIAL", "SPECIES", "SPONSOR", "STADIUM", "STAMINA", "STANDUP", "STAPLES", "STATION", "STORAGE", "STORIES", "STIRFRY", "STIRRUP", "STREAMS", "STRIDES", "STUDENT", "SUBJECT", "SUBSIST", "SUBTEXT", "SUCCEED", "SUCCESS", "SUCROSE", "SUGGEST", "SUICIDE", "SULPHUR", "SUMMARY", "SUNBATH", "SUNBELT", "SUNBEAM", "SUNBURN", "SUNDAYS", "SUNDECK", "SUNDIAL", "SUNDOWN", "SUNFISH", "SUNGLOW", "SUNLAMP", "SUNLAND", "SUNLIKE", "SUNMAID", "SUNRISE", "SUNROOF", "SUNROOM", "SUNSETS", "SUNSPOT", "SUPPORT", "SUPPOSE", "SUPREME", "SURGEON", "SURGERY", "SURVIVE", "SUSPEND", "SWEATER", "SWIMMER", "SWOLLEN", "SYMPTOM", "TABLETS", "TABLOID", "TADPOLE", "TALENTS", "TANGENT", "TANGLED", "TAXCUTS", "TEACHER", "TEENAGE", "TENSION", "TEQUILA", "TERMITE", "TERRIFY", "TESTIFY", "TEXTILE", "THEATRE", "THERAPY", "THERMOS", "THINKER", "THIRSTY", "THOUGHT", "THUNDER", "TIMEOUT", "TOBACCO", "TOENAIL", "TOERING", "TONIGHT", "TONNAGE", "TOPANGA", "TOPDECK", "TOPLESS", "TOPLOAD", "TOPPLES", "TOPRACK", "TOPSIDE", "TOPSOIL", "TORNADO", "TORTURE", "TOURIST", "TOWBOAT", "TOWHEAD", "TRACTOR", "TRAITOR", "TRANSIT", "TREETOP", "TRIBUTE", "TROUBLE", "TROUSER", "TRUCKER", "TRUMPET", "TUESDAY", "TUNISIA", "TWINKLE", "TWISTER", "TYPHOID", "TYPICAL", "TYRANNY", "UNHAPPY", "UNHEARD", "UNHINGE", "UNHITCH", "UNICORN", "UNIFIED", "UNIFORM", "UNITARD", "UNITARY", "UNKEMPT", "UNKNOWN", "UNLATCH", "UNLEARN", "UNLEASH", "UNLEVEL", "UNLOOSE", "UNLUCKY", "UNQUOTE", "UNRAVEL", "UNREADY", "UNSCREW", "UNSTACK", "UNUSUAL", "UNWOUND", "UNWOVEN", "UPDRAFT", "UPFRONT", "UPGRADE", "UPRIGHT", "UPSCALE", "UPSTAIR", "UPSTATE", "UPSURGE", "UPSWELL", "UPSWEPT", "UPSWING", "UPTIGHT", "URANIUM", "URGENCY", "URINARY", "URINATE", "UROLOGY", "USUALLY", "UTENSIL", "UTILITY", "UTOPIAN", "VACANCY", "VACCINE", "VAGRANT", "VAGUELY", "VALANCE", "VALUATE", "VALLEYS", "VAMPIRE", "VANILLA", "VANLOAD", "VANPOOL", "VARIANT", "VARIETY", "VEHICLE", "VELVETY", "VENISON", "VENTURE", "VERDICT", "VERSION", "VIBRATE", "VICEROY", "VICTORY", "VILLAGE", "VINTAGE", "VIOLATE", "VIOLENT", "VISITOR", "VOLCANO", "WAFFLES", "WALNUTS", "WARBLER", "WARFARE", "WARRIOR", "WASHERS", "WEALTHY", "WEATHER", "WEBCAST", "WEBSITE", "WEBSTER", "WEEKEND", "WELCOME", "WELFARE", "WESTERN", "WETNESS", "WETSUIT", "WHOEVER", "WINDOWS", "WINNERS", "WIPEOUT", "WISEMAN", "WITHOUT", "WITNESS", "WORLDLY", "WORSHIP", "WRESTLE", "WRONGED", "ZEALOUS"
+        ];
+
+        const VALID_WORDS = new Set(WORD_LIST);
+
+        let targetWord = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+        let currentRow = 0;
+        let currentTile = 0;
+        let currentGuess = "";
+        let gameOver = false;
+        let keyStates = {};
+
+        const board = document.getElementById('board');
+        const keyboard = document.getElementById('keyboard');
+        const messageEl = document.getElementById('message');
+        const statsEl = document.getElementById('stats');
+        const overlayEl = document.getElementById('overlay');
+
+        // Initialize board
+        function initBoard() {
+            for (let i = 0; i < 6; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                for (let j = 0; j < 7; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.setAttribute('data-row', i);
+                    tile.setAttribute('data-col', j);
+                    row.appendChild(tile);
+                }
+                board.appendChild(row);
+            }
+        }
+
+        function showMessage(text) {
+            messageEl.textContent = text;
+            messageEl.classList.add('show');
+            setTimeout(() => {
+                messageEl.classList.remove('show');
+            }, 2000);
+        }
+
+        function showStats(won) {
+            document.getElementById('stats-title').textContent = won ? 'Congratulations!' : 'Game Over';
+            document.getElementById('stats-message').textContent = won
+                ? `You guessed it in ${currentRow} ${currentRow === 1 ? 'try' : 'tries'}!`
+                : 'Better luck next time!';
+            document.getElementById('stats-word').textContent = targetWord;
+            statsEl.classList.add('show');
+            overlayEl.classList.add('show');
+        }
+
+        function updateTile(row, col, letter) {
+            const tile = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            tile.textContent = letter;
+            if (letter) {
+                tile.classList.add('filled');
+            } else {
+                tile.classList.remove('filled');
+            }
+        }
+
+        function handleKeyPress(key) {
+            if (gameOver) return;
+
+            if (key === 'Enter') {
+                submitGuess();
+            } else if (key === 'Backspace' || key === 'Delete') {
+                deleteLetter();
+            } else if (currentTile < 7 && /^[A-Z]$/.test(key)) {
+                addLetter(key);
+            }
+        }
+
+        function addLetter(letter) {
+            if (currentTile < 7) {
+                currentGuess += letter;
+                updateTile(currentRow, currentTile, letter);
+                currentTile++;
+            }
+        }
+
+        function deleteLetter() {
+            if (currentTile > 0) {
+                currentTile--;
+                currentGuess = currentGuess.slice(0, -1);
+                updateTile(currentRow, currentTile, '');
+            }
+        }
+
+        function shakeRow() {
+            const rows = board.querySelectorAll('.row');
+            const currentRowElement = rows[currentRow];
+            currentRowElement.classList.add('shake');
+            setTimeout(() => {
+                currentRowElement.classList.remove('shake');
+            }, 500);
+        }
+
+        function submitGuess() {
+            if (currentGuess.length !== 7) {
+                showMessage('Not enough letters');
+                shakeRow();
+                return;
+            }
+
+            if (!VALID_WORDS.has(currentGuess)) {
+                showMessage('Not in word list');
+                shakeRow();
+                return;
+            }
+
+            evaluateGuess();
+
+            if (currentGuess === targetWord) {
+                gameOver = true;
+                setTimeout(() => showStats(true), 2000);
+            } else if (currentRow === 5) {
+                gameOver = true;
+                setTimeout(() => showStats(false), 2000);
+            } else {
+                currentRow++;
+                currentTile = 0;
+                currentGuess = "";
+            }
+        }
+
+        function evaluateGuess() {
+            const guess = currentGuess.split('');
+            const target = targetWord.split('');
+            const result = Array(7).fill('absent');
+            const targetLetterCount = {};
+            const rowToUpdate = currentRow; // Capture current row before async operations
+
+            // Count letters in target
+            target.forEach(letter => {
+                targetLetterCount[letter] = (targetLetterCount[letter] || 0) + 1;
+            });
+
+            // First pass: mark correct positions
+            guess.forEach((letter, i) => {
+                if (letter === target[i]) {
+                    result[i] = 'correct';
+                    targetLetterCount[letter]--;
+                }
+            });
+
+            // Second pass: mark present letters
+            guess.forEach((letter, i) => {
+                if (result[i] !== 'correct' && targetLetterCount[letter] > 0) {
+                    result[i] = 'present';
+                    targetLetterCount[letter]--;
+                }
+            });
+
+            // Animate and update tiles
+            result.forEach((state, i) => {
+                setTimeout(() => {
+                    const tile = document.querySelector(`[data-row="${rowToUpdate}"][data-col="${i}"]`);
+                    tile.classList.add(state);
+
+                    // Update keyboard state
+                    const letter = guess[i];
+                    if (!keyStates[letter] ||
+                        (state === 'correct') ||
+                        (state === 'present' && keyStates[letter] !== 'correct')) {
+                        keyStates[letter] = state;
+                        updateKeyboard(letter, state);
+                    }
+                }, i * 100);
+            });
+        }
+
+        function updateKeyboard(letter, state) {
+            const key = document.querySelector(`[data-key="${letter}"]`);
+            if (key) {
+                key.classList.remove('correct', 'present', 'absent');
+                key.classList.add(state);
+            }
+        }
+
+        // Event listeners
+        keyboard.addEventListener('click', (e) => {
+            if (e.target.classList.contains('key')) {
+                const key = e.target.getAttribute('data-key');
+                handleKeyPress(key);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            let key = e.key;
+
+            // Handle special keys
+            if (key === 'Enter' || key === 'Backspace' || key === 'Delete') {
+                e.preventDefault();
+                handleKeyPress(key);
+            }
+            // Handle letter keys
+            else if (/^[a-zA-Z]$/.test(key)) {
+                e.preventDefault();
+                handleKeyPress(key.toUpperCase());
+            }
+        });
+
+        // Initialize game
+        initBoard();
+        console.log('Target word:', targetWord); // For testing - remove in production
+    </script>
+</body>
+</html>
